@@ -8,6 +8,17 @@ import { AppConfigService } from './config/config.service';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const config = app.get(AppConfigService);
+
+  // CORS for the web frontend (cross-origin). Empty list => same-origin only.
+  const corsOrigins = config.corsOrigins;
+  if (corsOrigins.length > 0) {
+    app.enableCors({
+      origin: corsOrigins.includes('*') ? true : corsOrigins,
+      credentials: true,
+    });
+  }
+
   app.setGlobalPrefix(API_PREFIX.replace(/^\//, ''));
 
   // Interactive OpenAPI docs at /api/docs (JSON at /api/docs-json).
@@ -19,7 +30,6 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swaggerConfig));
 
-  const config = app.get(AppConfigService);
   await app.listen(config.port);
   const log = new Logger('Bootstrap');
   log.log(`ideascout API listening on :${config.port}`);

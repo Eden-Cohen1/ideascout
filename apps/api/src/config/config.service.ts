@@ -58,6 +58,14 @@ export class AppConfigService {
     return { defaultProvider: this.config.RESEARCH_DEFAULT_PROVIDER };
   }
 
+  /** Allowed CORS origins (parsed from the comma-separated CORS_ORIGINS). */
+  get corsOrigins(): string[] {
+    return (this.config.CORS_ORIGINS ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+  }
+
   /** Raw provider API key, or undefined when unset (=> that provider runs in mock mode). */
   providerKey(id: string): string | undefined {
     if (id in PROVIDER_ENV_KEYS) {
