@@ -38,4 +38,11 @@ describe('AppConfigService', () => {
     expect(svc.providerKey('anthropic')).toBeUndefined();
     expect(svc.providerKey('does-not-exist')).toBeUndefined();
   });
+
+  it('parses corsOrigins from a comma-separated list', () => {
+    expect(
+      new AppConfigService({ ...sample, CORS_ORIGINS: 'http://a, http://b' }).corsOrigins,
+    ).toEqual(['http://a', 'http://b']);
+    expect(new AppConfigService({ ...sample, CORS_ORIGINS: undefined }).corsOrigins).toEqual([]);
+  });
 });

@@ -26,6 +26,10 @@ export const configSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
   TAVILY_API_KEY: z.string().optional(),
+
+  // Comma-separated allowed CORS origins for the web frontend (e.g. http://localhost:5173).
+  // Use '*' to reflect any origin. Empty => CORS disabled (same-origin only).
+  CORS_ORIGINS: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;

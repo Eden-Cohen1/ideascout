@@ -43,4 +43,11 @@ describe('validateConfig', () => {
   it('throws on an unknown LLM_DEFAULT_PROVIDER', () => {
     expect(() => validateConfig({ ...base, LLM_DEFAULT_PROVIDER: 'lmstudio' })).toThrow();
   });
+
+  it('accepts an optional comma-separated CORS_ORIGINS', () => {
+    expect(validateConfig({ ...base, CORS_ORIGINS: 'http://localhost:5173' }).CORS_ORIGINS).toBe(
+      'http://localhost:5173',
+    );
+    expect(validateConfig({ ...base }).CORS_ORIGINS).toBeUndefined();
+  });
 });
