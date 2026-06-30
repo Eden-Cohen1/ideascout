@@ -31,3 +31,6 @@ export type ResearchStep = (typeof RESEARCH_STEPS)[number];
 
 export const VERDICTS = ['GO', 'NO_GO', 'CONDITIONAL_GO'] as const;
 export type Verdict = (typeof VERDICTS)[number];
+
+export const REFINEMENT_ROLES = ['USER', 'ASSISTANT', 'SYSTEM'] as const;
+export type RefinementRole = (typeof REFINEMENT_ROLES)[number];
