@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   type CreateProjectRequest,
   CreateProjectRequestSchema,
@@ -18,6 +19,7 @@ import {
 } from '@ideascout/shared';
 import type { Project } from '@prisma/client';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
+import { ApiZodBody } from '../../common/swagger';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser, type AuthenticatedUser } from '../../common/current-user.decorator';
 import { ProjectsService } from './projects.service';
@@ -37,12 +39,16 @@ function toResponse(p: Project): ProjectResponse {
   };
 }
 
+@ApiTags('projects')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projects: ProjectsService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a project' })
+  @ApiZodBody(CreateProjectRequestSchema)
   async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateProjectRequestSchema)) dto: CreateProjectRequest,
@@ -51,18 +57,22 @@ export class ProjectsController {
   }
 
   @Get()
+  @ApiOperation({ summary: "List the current user's projects" })
   async list(@CurrentUser() user: AuthenticatedUser): Promise<ProjectResponse[]> {
     return (await this.projects.listForOwner(user.id)).map(toResponse);
   }
 
   @UseGuards(ProjectAccessGuard)
   @Get(':id')
+  @ApiOperation({ summary: 'Get a project by id' })
   async get(@Param('id') id: string): Promise<ProjectResponse> {
     return toResponse(await this.projects.getById(id));
   }
 
   @UseGuards(ProjectAccessGuard)
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a project (incl. AI/research provider selection)' })
+  @ApiZodBody(UpdateProjectRequestSchema)
   async update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(UpdateProjectRequestSchema)) dto: UpdateProjectRequest,
@@ -73,6 +83,7 @@ export class ProjectsController {
   @UseGuards(ProjectAccessGuard)
   @Delete(':id')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a project' })
   remove(@Param('id') id: string): Promise<void> {
     return this.projects.remove(id);
   }

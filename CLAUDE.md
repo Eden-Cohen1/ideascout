@@ -36,6 +36,12 @@ for, not yet built.
   compiles to CommonJS so both consume it.
 - Per-project ownership is the entire access model (`ProjectAccessGuard`): a user only
   sees their own projects. No heavy RBAC.
+- **API docs (Swagger) — keep them current.** Interactive OpenAPI lives at `/api/docs`
+  (set up in `apps/api/src/main.ts`). Every new controller gets `@ApiTags('<area>')`;
+  guarded routes get `@ApiBearerAuth()`; each route gets `@ApiOperation({ summary })`;
+  request bodies use `@ApiZodBody(Schema)` from `common/swagger.ts` so docs derive from
+  the SAME shared Zod schema we validate against (no drift). New endpoints are not "done"
+  until they're documented this way.
 
 ## Common commands
 
