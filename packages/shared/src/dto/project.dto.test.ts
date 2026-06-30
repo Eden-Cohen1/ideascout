@@ -25,6 +25,10 @@ describe('UpdateProjectRequestSchema', () => {
     const parsed = UpdateProjectRequestSchema.parse({ llmProvider: 'anthropic', llmModel: 'x' });
     expect(parsed.llmProvider).toBe('anthropic');
   });
+
+  it('rejects an unknown provider id', () => {
+    expect(() => UpdateProjectRequestSchema.parse({ llmProvider: 'chatgpt' })).toThrow();
+  });
 });
 
 describe('ProjectResponseSchema', () => {

@@ -1,8 +1,5 @@
 import { z } from 'zod';
-
-/** Provider ids recognised by the AI/research adapter layer. */
-export const LLM_PROVIDER_IDS = ['openai', 'anthropic', 'gemini', 'mock'] as const;
-export const RESEARCH_PROVIDER_IDS = ['tavily', 'mock'] as const;
+import { LLM_PROVIDER_IDS, RESEARCH_PROVIDER_IDS } from '@ideascout/shared';
 
 /**
  * Environment contract. Validated once at boot — the app fails fast on bad config.

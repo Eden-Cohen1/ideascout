@@ -34,3 +34,12 @@ export type Verdict = (typeof VERDICTS)[number];
 
 export const REFINEMENT_ROLES = ['USER', 'ASSISTANT', 'SYSTEM'] as const;
 export type RefinementRole = (typeof REFINEMENT_ROLES)[number];
+
+// Provider ids — runtime/config vocabulary for the AI + research adapter layer.
+// (Not DB enums; the single source for env validation, the project DTO, and the
+// future web provider picker.) `mock` is the keyless deterministic fallback.
+export const LLM_PROVIDER_IDS = ['openai', 'anthropic', 'gemini', 'mock'] as const;
+export type LlmProviderId = (typeof LLM_PROVIDER_IDS)[number];
+
+export const RESEARCH_PROVIDER_IDS = ['tavily', 'mock'] as const;
+export type ResearchProviderId = (typeof RESEARCH_PROVIDER_IDS)[number];

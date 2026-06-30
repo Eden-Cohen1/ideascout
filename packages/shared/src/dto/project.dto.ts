@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { LLM_PROVIDER_IDS, RESEARCH_PROVIDER_IDS } from '../enums';
 
-/** Which AI/research adapters this project prefers (null/absent => global default). */
+/** Which AI/research adapters this project prefers (absent => global default). */
 export const ProviderSelectionSchema = z.object({
-  llmProvider: z.string().optional(),
+  llmProvider: z.enum(LLM_PROVIDER_IDS).optional(),
   llmModel: z.string().optional(),
-  researchProvider: z.string().optional(),
+  researchProvider: z.enum(RESEARCH_PROVIDER_IDS).optional(),
 });
 
 export const CreateProjectRequestSchema = z.object({
