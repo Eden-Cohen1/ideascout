@@ -1,18 +1,22 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 
+@ApiTags('health')
 @Controller('health')
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Liveness: the process is up. */
   @Get()
+  @ApiOperation({ summary: 'Liveness probe' })
   check(): { status: string; service: string } {
     return { status: 'ok', service: 'ideascout-api' };
   }
 
   /** Readiness: dependencies (database) are reachable. */
   @Get('ready')
+  @ApiOperation({ summary: 'Readiness probe (checks the database)' })
   async ready(): Promise<{ status: string; db: string }> {
     try {
       await this.prisma.$queryRaw`SELECT 1`;

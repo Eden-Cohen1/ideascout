@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   type CreateIdeaRequest,
   CreateIdeaRequestSchema,
@@ -11,6 +12,7 @@ import {
 } from '@ideascout/shared';
 import type { IdeaVersion } from '@prisma/client';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
+import { ApiZodBody } from '../../common/swagger';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { ProjectAccessGuard } from '../projects/project-access.guard';
 import { IdeasService, type IdeaWithVersion } from './ideas.service';
@@ -40,12 +42,16 @@ function toIdeaResponse(idea: IdeaWithVersion): IdeaResponse {
 }
 
 // Nested under a project so ProjectAccessGuard enforces ownership for every route.
+@ApiTags('ideas')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, ProjectAccessGuard)
 @Controller('projects/:projectId/ideas')
 export class IdeasController {
   constructor(private readonly ideas: IdeasService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create an idea (with version 1)' })
+  @ApiZodBody(CreateIdeaRequestSchema)
   async create(
     @Param('projectId') projectId: string,
     @Body(new ZodValidationPipe(CreateIdeaRequestSchema)) dto: CreateIdeaRequest,
@@ -54,11 +60,13 @@ export class IdeasController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List ideas in a project' })
   async list(@Param('projectId') projectId: string): Promise<IdeaResponse[]> {
     return (await this.ideas.listForProject(projectId)).map(toIdeaResponse);
   }
 
   @Get(':ideaId')
+  @ApiOperation({ summary: 'Get an idea by id' })
   async get(
     @Param('projectId') projectId: string,
     @Param('ideaId') ideaId: string,
@@ -67,6 +75,8 @@ export class IdeasController {
   }
 
   @Patch(':ideaId')
+  @ApiOperation({ summary: 'Refine an idea (creates a new immutable version)' })
+  @ApiZodBody(UpdateIdeaRequestSchema)
   async update(
     @Param('projectId') projectId: string,
     @Param('ideaId') ideaId: string,
@@ -76,6 +86,8 @@ export class IdeasController {
   }
 
   @Post(':ideaId/transition')
+  @ApiOperation({ summary: 'Transition an idea to a new lifecycle state' })
+  @ApiZodBody(IdeaTransitionRequestSchema)
   async transition(
     @Param('projectId') projectId: string,
     @Param('ideaId') ideaId: string,
