@@ -3,6 +3,7 @@
 // Enums + route constants
 export * from './enums';
 export * from './api-routes';
+export * from './lifecycle';
 
 // AI structured-output contracts (domain)
 export * from './domain/citation.schema';
