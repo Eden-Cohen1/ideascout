@@ -22,6 +22,9 @@ yarn-error.log*
 # test / coverage
 coverage/
 
+# personal AI assistant notes (not shared with the team)
+CLAUDE.local.md
+
 # editor / OS
 .DS_Store
 .idea/
