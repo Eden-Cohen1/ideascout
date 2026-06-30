@@ -1,0 +1,15 @@
+**/node_modules
+node_modules
+**/dist
+dist
+apps/web/dist
+apps/api/generated
+.git
+.gitignore
+**/*.log
+coverage
+.env
+.env.*
+!.env.example
+README.md
+docs

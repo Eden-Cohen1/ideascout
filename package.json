@@ -1,0 +1,33 @@
+{
+  "name": "ideascout",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Automated startup-idea evaluation & validation platform",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "shared:build": "npm run build --workspace @ideascout/shared",
+    "build": "npm run shared:build && npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "dev:api": "npm run dev --workspace @ideascout/api",
+    "dev:web": "npm run dev --workspace @ideascout/web"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  }
+}

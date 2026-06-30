@@ -1,0 +1,273 @@
+// ideascout data model.
+//
+// NOTE: Prisma deps + client generation are added in the data-model milestone.
+// This file is the designed schema; `prisma generate` / `migrate` run there.
+// Using the classic `prisma-client-js` generator for straightforward CommonJS
+// interop with NestJS (can migrate to Prisma 7's `prisma-client` + ESM later).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------- enums ----------------------------
+// Keep in sync with packages/shared/src/enums.ts
+
+enum IdeaLifecycleState {
+  IDEA
+  RESEARCH
+  REFINE
+  VALIDATE
+  DECISION
+}
+
+enum ResearchRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ResearchStep {
+  DECOMPOSE
+  MARKET_RESEARCH
+  COMPETITOR_DISCOVERY
+  MOAT_ANALYSIS
+  VERDICT
+}
+
+enum Verdict {
+  GO
+  NO_GO
+  CONDITIONAL_GO
+}
+
+enum ArtifactKind {
+  SEARCH_RESULTS
+  FETCHED_PAGE
+  LLM_RAW
+  VERDICT
+  COMPETITOR_MAP
+  MOAT
+}
+
+enum RefinementRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum CredentialScope {
+  GLOBAL
+  PROJECT
+}
+
+// ---------------------------- core ----------------------------
+
+model User {
+  id           String               @id @default(cuid())
+  email        String               @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  projects     Project[]
+  credentials  ProviderCredential[]
+}
+
+model Project {
+  id               String               @id @default(cuid())
+  ownerId          String
+  owner            User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  // provider selection; null => global default
+  llmProvider      String?
+  llmModel         String?
+  researchProvider String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  ideas            Idea[]
+  credentials      ProviderCredential[]
+
+  @@index([ownerId])
+}
+
+model Idea {
+  id               String              @id @default(cuid())
+  projectId        String
+  project          Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title            String
+  state            IdeaLifecycleState  @default(IDEA)
+  currentVersionId String?             @unique
+  currentVersion   IdeaVersion?        @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  versions         IdeaVersion[]       @relation("AllVersions")
+  researchRuns     ResearchRun[]
+  refinement       RefinementMessage[]
+
+  @@index([projectId])
+}
+
+// Immutable snapshot of an idea's content; refinement creates new versions.
+model IdeaVersion {
+  id             String        @id @default(cuid())
+  ideaId         String
+  idea           Idea          @relation("AllVersions", fields: [ideaId], references: [id], onDelete: Cascade)
+  version        Int
+  problem        String
+  solution       String
+  targetCustomer String?
+  attributes     Json          @default("{}")
+  createdAt      DateTime      @default(now())
+  currentOf      Idea?         @relation("CurrentVersion")
+  researchRuns   ResearchRun[]
+
+  @@unique([ideaId, version])
+  @@index([ideaId])
+}
+
+model ResearchRun {
+  id               String             @id @default(cuid())
+  ideaId           String
+  idea             Idea               @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  ideaVersionId    String
+  ideaVersion      IdeaVersion        @relation(fields: [ideaVersionId], references: [id])
+  status           ResearchRunStatus  @default(QUEUED)
+  currentStep      ResearchStep?
+  progress         Int                @default(0)
+  // denormalized snapshot of providers/models used (audit + determinism)
+  llmProvider      String
+  llmModel         String
+  researchProvider String
+  jobId            String?
+  error            String?
+  verdict          Verdict?
+  verdictScore     Int?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  artifacts        ResearchArtifact[]
+  competitors      Competitor[]
+  moat             MoatAnalysis?
+
+  @@index([ideaId])
+  @@index([status])
+}
+
+// Every intermediate output (raw search, fetched pages, raw + structured LLM
+// outputs) — the full audit/grounding trail.
+model ResearchArtifact {
+  id        String       @id @default(cuid())
+  runId     String
+  run       ResearchRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  step      ResearchStep
+  kind      ArtifactKind
+  payload   Json
+  createdAt DateTime     @default(now())
+
+  @@index([runId, step])
+}
+
+model Competitor {
+  id           String      @id @default(cuid())
+  runId        String
+  run          ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  name         String
+  url          String?
+  product      String
+  customer     String
+  positioning  String?
+  pricingNotes String?
+  strengths    Json        @default("[]")
+  weaknesses   Json        @default("[]")
+  citations    Json        @default("[]")
+  createdAt    DateTime    @default(now())
+
+  @@index([runId])
+}
+
+model MoatAnalysis {
+  id                 String      @id @default(cuid())
+  runId              String      @unique
+  run                ResearchRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  summary            String
+  defensibilityScore Int
+  dimensions         Json        @default("[]")
+  risks              Json        @default("[]")
+  citations          Json        @default("[]")
+  createdAt          DateTime    @default(now())
+}
+
+model RefinementMessage {
+  id               String         @id @default(cuid())
+  ideaId           String
+  idea             Idea           @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  role             RefinementRole
+  content          String
+  proposedPatch    Json?
+  appliedVersionId String?
+  createdAt        DateTime       @default(now())
+
+  @@index([ideaId])
+}
+
+model ProviderCredential {
+  id         String          @id @default(cuid())
+  scope      CredentialScope
+  ownerId    String?
+  owner      User?           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  providerId String
+  // AES-256-GCM ciphertext (never plaintext); key from APP_ENCRYPTION_KEY
+  ciphertext Bytes
+  iv         Bytes
+  authTag    Bytes
+  label      String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([scope, projectId, providerId])
+  @@index([providerId])
+}
+
+// ===================================================================
+// PHASE 2/3 STUBS — designed now, enabled via additive migration later.
+// Kept commented so the Phase 1 migration stays clean. Relations anchor
+// on Idea/Project, so adding these is non-breaking.
+// ===================================================================
+//
+// enum ContactStatus { DISCOVERED VERIFIED ENRICHED INVALID }
+// enum OutreachChannel { EMAIL LINKEDIN SLACK }          // EMAIL auto-send; others draft + deep link
+// enum OutreachStatus { DRAFT QUEUED SENT FAILED REPLIED SKIPPED }
+//
+// model Contact {
+//   id String @id @default(cuid())
+//   projectId String
+//   ideaId    String?
+//   name String?  email String?  company String?  title String?
+//   linkedinUrl String?  source String
+//   status ContactStatus @default(DISCOVERED)
+//   enrichment Json @default("{}")
+//   createdAt DateTime @default(now())
+// }
+// model Question {
+//   id String @id @default(cuid())
+//   ideaId String  contactId String?
+//   text String  rationale String?  category String?
+//   createdAt DateTime @default(now())
+// }
+// model OutreachMessage {
+//   id String @id @default(cuid())
+//   contactId String  channel OutreachChannel  status OutreachStatus @default(DRAFT)
+//   subject String?  body String  deepLink String?
+//   sentAt DateTime?  providerMessageId String?
+//   createdAt DateTime @default(now())
+// }
