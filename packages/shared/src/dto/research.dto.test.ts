@@ -14,6 +14,10 @@ describe('StartResearchRequestSchema', () => {
     const parsed = StartResearchRequestSchema.parse({ llmProvider: 'gemini' });
     expect(parsed.llmProvider).toBe('gemini');
   });
+
+  it('rejects an unknown provider id', () => {
+    expect(() => StartResearchRequestSchema.parse({ researchProvider: 'duckduckgo' })).toThrow();
+  });
 });
 
 describe('ResearchRunSummarySchema', () => {

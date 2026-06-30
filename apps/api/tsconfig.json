@@ -6,11 +6,10 @@
     "outDir": "dist",
     "rootDir": "src",
     "baseUrl": ".",
-    "incremental": true,
-    "paths": {
-      "@ideascout/shared": ["../../packages/shared/src/index.ts"],
-      "@ideascout/shared/*": ["../../packages/shared/src/*"]
-    }
+    // Resolve @ideascout/shared via the built package (node_modules symlink ->
+    // packages/shared/dist), NOT its source — keeps shared's .ts out of the API's
+    // rootDir program. Build shared before typechecking/building the API.
+    "paths": {}
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

@@ -1,5 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import type { LlmProviderId, ResearchProviderId } from '@ideascout/shared';
 import type { AppConfig } from './config.schema';
+
+/**
+ * Provider id -> env var holding its API key. Keyed by the provider-id union so a
+ * typo or missing provider is a compile error (not a silent mock fallback).
+ * `mock` is intentionally absent (it needs no key).
+ */
+const PROVIDER_ENV_KEYS = {
+  openai: 'OPENAI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  tavily: 'TAVILY_API_KEY',
+} as const satisfies Partial<Record<LlmProviderId | ResearchProviderId, keyof AppConfig>>;
 
 /** Typed, read-only access to validated configuration. */
 @Injectable()
@@ -47,17 +60,9 @@ export class AppConfigService {
 
   /** Raw provider API key, or undefined when unset (=> that provider runs in mock mode). */
   providerKey(id: string): string | undefined {
-    switch (id) {
-      case 'openai':
-        return this.config.OPENAI_API_KEY;
-      case 'anthropic':
-        return this.config.ANTHROPIC_API_KEY;
-      case 'gemini':
-        return this.config.GEMINI_API_KEY;
-      case 'tavily':
-        return this.config.TAVILY_API_KEY;
-      default:
-        return undefined;
+    if (id in PROVIDER_ENV_KEYS) {
+      return this.config[PROVIDER_ENV_KEYS[id as keyof typeof PROVIDER_ENV_KEYS]];
     }
+    return undefined;
   }
 }

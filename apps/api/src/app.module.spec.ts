@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from './app.module';
 import { AppConfigService } from './config/config.service';
 import { CryptoService } from './crypto/crypto.service';
+import { PrismaService } from './prisma/prisma.service';
 
 describe('AppModule (integration)', () => {
   beforeAll(() => {
@@ -18,10 +19,12 @@ describe('AppModule (integration)', () => {
 
     const config = moduleRef.get(AppConfigService);
     const crypto = moduleRef.get(CryptoService);
+    const prisma = moduleRef.get(PrismaService);
 
     expect(config.port).toBeGreaterThan(0);
     const enc = crypto.encrypt('hello');
     expect(crypto.decrypt(enc)).toBe('hello');
+    expect(prisma).toBeDefined();
 
     await moduleRef.close();
   });
