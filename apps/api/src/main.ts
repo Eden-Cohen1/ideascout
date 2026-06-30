@@ -2,12 +2,14 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import { API_PREFIX } from '@ideascout/shared';
 import { AppModule } from './app.module';
 import { AppConfigService } from './config/config.service';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
   const config = app.get(AppConfigService);
 
   // CORS for the web frontend (cross-origin). Empty list => same-origin only.
