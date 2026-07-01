@@ -16,8 +16,8 @@ import {
   buildRefinementContext,
   type HistoryTurn,
   type ResearchSummary,
+  ideaBrief,
 } from './refinement.context';
-import { ideaBrief } from './refinement.context';
 import { PatchExtractionSchema, patchExtractionMessages } from './refinement.prompt';
 
 type IdeaWithVersion = {
