@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import type {
   LlmCallOptions,
   LlmChatResult,
@@ -38,7 +38,7 @@ export class MockLlmProvider implements LlmProvider {
 
   async structured<T>(
     _messages: LlmMessage[],
-    schema: ZodType<T>,
+    schema: ZodType<T, ZodTypeDef, unknown>,
     _opts?: LlmCallOptions,
   ): Promise<LlmStructuredResult<T>> {
     // parse() applies defaults/coercion and guarantees a valid value.

@@ -23,35 +23,10 @@ import { ApiZodBody } from '../../common/swagger';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { ProjectAccessGuard } from '../projects/project-access.guard';
 import { ResearchProgressBridge } from '../jobs/research-progress.bridge';
-import { ResearchService, type ResearchRunDetail as RunWithRelations } from './research.service';
+import { ResearchService } from './research.service';
+import { toResearchRunDetail, toResearchRunSummary } from './research-detail.mapper';
 
 const TERMINAL = new Set<ResearchRun['status']>(['SUCCEEDED', 'FAILED', 'CANCELLED']);
-
-function toSummary(run: ResearchRun): ResearchRunSummary {
-  return {
-    id: run.id,
-    ideaId: run.ideaId,
-    ideaVersionId: run.ideaVersionId,
-    status: run.status,
-    currentStep: run.currentStep ?? null,
-    progress: run.progress,
-    verdict: run.verdict ?? null,
-    verdictScore: run.verdictScore ?? null,
-    llmProvider: run.llmProvider,
-    llmModel: run.llmModel,
-    researchProvider: run.researchProvider,
-    error: run.error ?? null,
-    startedAt: run.startedAt?.toISOString() ?? null,
-    finishedAt: run.finishedAt?.toISOString() ?? null,
-    createdAt: run.createdAt.toISOString(),
-  };
-}
-
-function toDetail(run: RunWithRelations): ResearchRunDetail {
-  // Structured artifacts (verdictResult / competitorMap / moat) are produced by the
-  // pipeline in M8; null until then.
-  return { ...toSummary(run), verdictResult: null, competitorMap: null, moat: null };
-}
 
 function currentStateEvent(run: ResearchRun): ResearchProgressEvent {
   return {
@@ -82,7 +57,7 @@ export class ResearchController {
     @Param('ideaId') ideaId: string,
     @Body(new ZodValidationPipe(StartResearchRequestSchema)) dto: StartResearchRequest,
   ): Promise<ResearchRunSummary> {
-    return toSummary(await this.research.createRun(projectId, ideaId, dto));
+    return toResearchRunSummary(await this.research.createRun(projectId, ideaId, dto));
   }
 
   @Get('research/:runId')
@@ -91,7 +66,7 @@ export class ResearchController {
     @Param('projectId') projectId: string,
     @Param('runId') runId: string,
   ): Promise<ResearchRunDetail> {
-    return toDetail(await this.research.getRun(projectId, runId));
+    return toResearchRunDetail(await this.research.getRun(projectId, runId));
   }
 
   @Sse('research/:runId/stream')
