@@ -11,8 +11,8 @@ import { IdeasModule } from './modules/ideas/ideas.module';
 import { ProvidersModule } from './modules/providers/providers.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { ResearchModule } from './modules/research/research.module';
+import { RefinementModule } from './modules/refinement/refinement.module';
 
-// Refinement is the remaining feature module (next milestone).
 @Module({
   imports: [
     ConfigModule,
@@ -25,6 +25,7 @@ import { ResearchModule } from './modules/research/research.module';
     ProjectsModule,
     IdeasModule,
     ResearchModule,
+    RefinementModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

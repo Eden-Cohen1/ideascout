@@ -46,13 +46,10 @@ export class ResearchService {
     }
 
     const project = idea.project;
-    const llmProvider =
-      override?.llmProvider ?? project.llmProvider ?? this.config.llm.defaultProvider;
-    const llmModel =
-      override?.llmModel ??
-      project.llmModel ??
-      this.config.llm.defaultModel ??
-      this.llm.resolve(llmProvider).defaultModel;
+    const { providerId: llmProvider, model: llmModel } = this.llm.resolveForProject({
+      provider: override?.llmProvider ?? project.llmProvider,
+      model: override?.llmModel ?? project.llmModel,
+    });
     const researchProvider =
       override?.researchProvider ??
       project.researchProvider ??

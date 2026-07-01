@@ -20,3 +20,4 @@ export * from './dto/refinement.dto';
 
 // Realtime events
 export * from './events/research-progress.event';
+export * from './events/refinement-stream.event';

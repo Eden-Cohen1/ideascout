@@ -6,40 +6,15 @@ import {
   type IdeaResponse,
   type IdeaTransitionRequest,
   IdeaTransitionRequestSchema,
-  type IdeaVersionResponse,
   type UpdateIdeaRequest,
   UpdateIdeaRequestSchema,
 } from '@ideascout/shared';
-import type { IdeaVersion } from '@prisma/client';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ApiZodBody } from '../../common/swagger';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { ProjectAccessGuard } from '../projects/project-access.guard';
-import { IdeasService, type IdeaWithVersion } from './ideas.service';
-
-function toVersionResponse(v: IdeaVersion): IdeaVersionResponse {
-  return {
-    id: v.id,
-    version: v.version,
-    problem: v.problem,
-    solution: v.solution,
-    targetCustomer: v.targetCustomer,
-    attributes: (v.attributes ?? {}) as Record<string, unknown>,
-    createdAt: v.createdAt.toISOString(),
-  };
-}
-
-function toIdeaResponse(idea: IdeaWithVersion): IdeaResponse {
-  return {
-    id: idea.id,
-    projectId: idea.projectId,
-    title: idea.title,
-    state: idea.state,
-    currentVersion: idea.currentVersion ? toVersionResponse(idea.currentVersion) : null,
-    createdAt: idea.createdAt.toISOString(),
-    updatedAt: idea.updatedAt.toISOString(),
-  };
-}
+import { IdeasService } from './ideas.service';
+import { toIdeaResponse } from './ideas.mapper';
 
 // Nested under a project so ProjectAccessGuard enforces ownership for every route.
 @ApiTags('ideas')

@@ -88,7 +88,8 @@ export abstract class FetchLlmProvider implements LlmProvider {
   }
 
   async *stream(messages: LlmMessage[], opts?: LlmCallOptions): AsyncIterable<LlmStreamChunk> {
-    // True token streaming arrives in the refinement milestone; emit once for now.
+    // Default: one-shot (emit the whole reply as a single chunk). Providers that support
+    // true token streaming override this — see OpenAiLlmProvider. (Anthropic/Gemini: TODO.)
     const res = await this.complete(messages, opts, false);
     yield { delta: res.text, done: false };
     yield { delta: '', done: true };

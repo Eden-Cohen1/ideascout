@@ -21,6 +21,7 @@ const FINISH: Record<string, LlmFinishReason> = {
   RECITATION: 'content_filter',
 };
 
+// TODO(streaming): inherits emit-once stream() from FetchLlmProvider; add true streaming later.
 @Injectable()
 export class GeminiLlmProvider extends FetchLlmProvider {
   readonly id = 'gemini';
