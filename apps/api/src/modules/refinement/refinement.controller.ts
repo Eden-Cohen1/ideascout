@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import {
   type PostRefinementMessageRequest,
@@ -11,6 +12,9 @@ import { ApiZodBody } from '../../common/swagger';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { ProjectAccessGuard } from '../projects/project-access.guard';
 import { RefinementService } from './refinement.service';
+
+// Tighter than the global 100/min: each refinement message triggers 2 LLM calls.
+const REFINEMENT_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
 @ApiTags('refinement')
 @ApiBearerAuth()
@@ -29,6 +33,7 @@ export class RefinementController {
   }
 
   @Post()
+  @Throttle(REFINEMENT_THROTTLE)
   @ApiOperation({ summary: 'Post a refinement message; streams the advisor reply as SSE' })
   @ApiZodBody(PostRefinementMessageRequestSchema)
   async stream(
