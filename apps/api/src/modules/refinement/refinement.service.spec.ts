@@ -154,6 +154,72 @@ describe('RefinementService.generate', () => {
     );
   });
 
+  it('persists the reply and emits a message frame even when patch extraction fails', async () => {
+    const prisma = {
+      idea: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'idea1',
+          projectId: 'proj1',
+          currentVersion: { problem: 'p', solution: 's', targetCustomer: null },
+        }),
+      },
+      researchRun: { findFirst: jest.fn().mockResolvedValue(null) },
+      project: { findUnique: jest.fn().mockResolvedValue(null) },
+      refinementMessage: {
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'm1', role: 'USER', content: 'hi', createdAt: new Date() })
+          .mockResolvedValueOnce({
+            id: 'm2',
+            role: 'ASSISTANT',
+            content: 'Hello there',
+            proposedPatch: null,
+            appliedVersionId: null,
+            createdAt: new Date('2026-07-01T00:00:00Z'),
+          }),
+        update: jest.fn(),
+      },
+    } as unknown as import('../../prisma/prisma.service').PrismaService;
+
+    async function* fakeStream() {
+      yield { delta: 'Hello ', done: false };
+      yield { delta: 'there', done: false };
+      yield { delta: '', done: true };
+    }
+    const provider = {
+      defaultModel: 'mock-1',
+      stream: jest.fn().mockReturnValue(fakeStream()),
+      // Extraction fails — must NOT discard the already-streamed reply.
+      structured: jest.fn().mockRejectedValue(new Error('extraction boom')),
+    };
+    const config = {
+      llm: { defaultProvider: 'mock', defaultModel: undefined },
+    } as unknown as import('../../config/config.service').AppConfigService;
+    const llm = {
+      resolve: jest.fn().mockReturnValue(provider),
+    } as unknown as import('../providers/llm/llm.registry').LlmRegistry;
+    const ideas = {} as unknown as import('../ideas/ideas.service').IdeasService;
+
+    const service = new RefinementService(prisma, config, llm, ideas);
+    const events = await collect(service.generate('proj1', 'idea1', 'hi'));
+
+    const terminal = events.at(-1) as {
+      type: string;
+      message: { content: string; proposedPatch: unknown };
+    };
+    expect(terminal.type).toBe('message'); // NOT 'error'
+    expect(terminal.message.content).toBe('Hello there');
+    expect(terminal.message.proposedPatch).toBeNull();
+    // the ASSISTANT reply was persisted despite extraction failing
+    expect((prisma.refinementMessage.create as jest.Mock).mock.calls[1][0].data).toMatchObject({
+      role: 'ASSISTANT',
+      content: 'Hello there',
+    });
+    // no proposedPatch update happened (extraction produced nothing)
+    expect(prisma.refinementMessage.update as jest.Mock).not.toHaveBeenCalled();
+  });
+
   it('emits an error frame when streaming throws', async () => {
     const prisma = {
       idea: {

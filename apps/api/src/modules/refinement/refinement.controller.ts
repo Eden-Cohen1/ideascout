@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import {
+  type IdeaResponse,
   type PostRefinementMessageRequest,
   PostRefinementMessageRequestSchema,
   type RefinementMessageResponse,
@@ -11,6 +12,7 @@ import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ApiZodBody } from '../../common/swagger';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { ProjectAccessGuard } from '../projects/project-access.guard';
+import { toIdeaResponse } from '../ideas/ideas.mapper';
 import { RefinementService } from './refinement.service';
 
 // Tighter than the global 100/min: each refinement message triggers 2 LLM calls.
@@ -61,11 +63,11 @@ export class RefinementController {
 
   @Post(':messageId/apply')
   @ApiOperation({ summary: 'Apply a proposed patch, creating a new idea version' })
-  apply(
+  async apply(
     @Param('projectId') projectId: string,
     @Param('ideaId') ideaId: string,
     @Param('messageId') messageId: string,
-  ) {
-    return this.refinement.applyPatch(projectId, ideaId, messageId);
+  ): Promise<IdeaResponse> {
+    return toIdeaResponse(await this.refinement.applyPatch(projectId, ideaId, messageId));
   }
 }

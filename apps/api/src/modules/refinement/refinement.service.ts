@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { RefinementMessage } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import {
@@ -22,6 +22,8 @@ import { PatchExtractionSchema, patchExtractionMessages } from './refinement.pro
 
 @Injectable()
 export class RefinementService {
+  private readonly logger = new Logger(RefinementService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
@@ -88,16 +90,30 @@ export class RefinementService {
         }
       }
 
-      const patch = await this.extractPatch(provider, model, idea.currentVersion, reply);
+      // Persist the streamed reply BEFORE extraction so a patch-extraction failure
+      // can never discard a reply the user already watched stream.
       const saved = await this.prisma.refinementMessage.create({
-        data: {
-          ideaId,
-          role: 'ASSISTANT',
-          content: reply,
-          proposedPatch: (patch as Prisma.InputJsonValue | undefined) ?? undefined,
-        },
+        data: { ideaId, role: 'ASSISTANT', content: reply },
       });
-      yield { type: 'message', message: this.toMessageResponse(saved) };
+
+      // Patch extraction is best-effort: on failure the reply stands with no proposal.
+      let patch: ProposedPatch | null = null;
+      try {
+        patch = await this.extractPatch(provider, model, idea.currentVersion, reply);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : 'unknown error';
+        this.logger.warn(`patch extraction failed for idea ${ideaId}: ${detail}`);
+      }
+      if (patch) {
+        await this.prisma.refinementMessage.update({
+          where: { id: saved.id },
+          data: { proposedPatch: patch as Prisma.InputJsonValue },
+        });
+      }
+      yield {
+        type: 'message',
+        message: { ...this.toMessageResponse(saved), proposedPatch: patch },
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       yield { type: 'error', message };

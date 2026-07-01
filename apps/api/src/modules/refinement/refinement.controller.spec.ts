@@ -46,13 +46,38 @@ describe('RefinementController', () => {
     expect(res.end).toHaveBeenCalled();
   });
 
-  it('POST apply delegates to the service', async () => {
+  it('POST apply maps the new idea version to the IdeaResponse contract', async () => {
+    const rawIdea = {
+      id: 'idea1',
+      projectId: 'proj1',
+      title: 'Acme',
+      state: 'REFINE',
+      currentVersionId: 'v2',
+      currentVersion: {
+        id: 'v2',
+        version: 2,
+        problem: 'sharper problem',
+        solution: 's',
+        targetCustomer: null,
+        attributes: {},
+        createdAt: new Date('2026-07-01T00:00:00Z'),
+        ideaId: 'idea1',
+      },
+      createdAt: new Date('2026-07-01T00:00:00Z'),
+      updatedAt: new Date('2026-07-01T00:00:00Z'),
+    };
     const service = {
-      applyPatch: jest.fn().mockResolvedValue({ id: 'idea1' }),
+      applyPatch: jest.fn().mockResolvedValue(rawIdea),
     } as unknown as RefinementService;
     const controller = new RefinementController(service);
-    expect(await controller.apply('proj1', 'idea1', 'm2')).toEqual({ id: 'idea1' });
+
+    const result = await controller.apply('proj1', 'idea1', 'm2');
+
     expect(service.applyPatch).toHaveBeenCalledWith('proj1', 'idea1', 'm2');
+    // Mapped to the shared IdeaResponse shape: ISO dates, no raw Prisma internals.
+    expect(result.currentVersion).toMatchObject({ version: 2, problem: 'sharper problem' });
+    expect(result.currentVersion?.createdAt).toBe('2026-07-01T00:00:00.000Z');
+    expect(result).not.toHaveProperty('currentVersionId');
   });
 
   it('POST writes an error SSE frame and ends when generate throws before yielding', async () => {
