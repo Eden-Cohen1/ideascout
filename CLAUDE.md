@@ -17,7 +17,9 @@ for, not yet built.
 - `apps/api` — NestJS. HTTP API (`src/main.ts`) and BullMQ worker (`src/worker.ts`)
   boot the **same** DI container, so the worker reuses the same adapter registry,
   Prisma, and config. Module-per-feature under `src/modules/*`; research pipeline steps
-  under `src/pipeline/steps/*`.
+  under `src/pipeline/steps/*`. Refinement (`src/modules/refinement/*`) adds the
+  streamed AI-advisor loop: POST returns an SSE token stream; the advisor can propose
+  idea-version patches.
 - `apps/web` — Vue 3 + Vite + Pinia + TypeScript, shadcn-vue (Reka UI) + Tailwind.
 - `infra/docker` — Postgres/Redis container config.
 
