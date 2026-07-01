@@ -1,6 +1,10 @@
 import { buildRefinementContext, ideaBrief } from './refinement.context';
 
-const idea = { problem: 'Founders waste time', solution: 'AI evaluator', targetCustomer: 'Solo founders' };
+const idea = {
+  problem: 'Founders waste time',
+  solution: 'AI evaluator',
+  targetCustomer: 'Solo founders',
+};
 
 describe('refinement.context', () => {
   it('ideaBrief includes all present fields', () => {
@@ -18,7 +22,13 @@ describe('refinement.context', () => {
   it('includes the research summary in the system message when present', () => {
     const msgs = buildRefinementContext(
       idea,
-      { verdict: 'CONDITIONAL_GO', score: 55, keyRisks: ['Crowded market'], marketSummary: 'Busy space', moatSummary: 'Thin moat' },
+      {
+        verdict: 'CONDITIONAL_GO',
+        score: 55,
+        keyRisks: ['Crowded market'],
+        marketSummary: 'Busy space',
+        moatSummary: 'Thin moat',
+      },
       [],
       'hi',
     );

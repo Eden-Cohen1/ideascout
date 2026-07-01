@@ -19,7 +19,9 @@ function makeRes() {
 
 describe('RefinementController', () => {
   it('GET returns the thread', async () => {
-    const service = { listThread: jest.fn().mockResolvedValue([{ id: 'm1' }]) } as unknown as RefinementService;
+    const service = {
+      listThread: jest.fn().mockResolvedValue([{ id: 'm1' }]),
+    } as unknown as RefinementService;
     const controller = new RefinementController(service);
     expect(await controller.thread('proj1', 'idea1')).toEqual([{ id: 'm1' }]);
     expect(service.listThread).toHaveBeenCalledWith('proj1', 'idea1');
@@ -38,12 +40,16 @@ describe('RefinementController', () => {
 
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
     expect(writes[0]).toBe(`data: ${JSON.stringify({ type: 'token', delta: 'Hi' })}\n\n`);
-    expect(writes[1]).toBe(`data: ${JSON.stringify({ type: 'message', message: { id: 'm2' } })}\n\n`);
+    expect(writes[1]).toBe(
+      `data: ${JSON.stringify({ type: 'message', message: { id: 'm2' } })}\n\n`,
+    );
     expect(res.end).toHaveBeenCalled();
   });
 
   it('POST apply delegates to the service', async () => {
-    const service = { applyPatch: jest.fn().mockResolvedValue({ id: 'idea1' }) } as unknown as RefinementService;
+    const service = {
+      applyPatch: jest.fn().mockResolvedValue({ id: 'idea1' }),
+    } as unknown as RefinementService;
     const controller = new RefinementController(service);
     expect(await controller.apply('proj1', 'idea1', 'm2')).toEqual({ id: 'idea1' });
     expect(service.applyPatch).toHaveBeenCalledWith('proj1', 'idea1', 'm2');
@@ -60,7 +66,9 @@ describe('RefinementController', () => {
 
     await controller.stream('proj1', 'idea1', { content: 'hello' }, res);
 
-    expect(writes[0]).toBe(`data: ${JSON.stringify({ type: 'error', message: 'Idea not found' })}\n\n`);
+    expect(writes[0]).toBe(
+      `data: ${JSON.stringify({ type: 'error', message: 'Idea not found' })}\n\n`,
+    );
     expect(res.end).toHaveBeenCalled();
   });
 });

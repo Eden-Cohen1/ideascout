@@ -39,7 +39,8 @@ export class RefinementController {
   async stream(
     @Param('projectId') projectId: string,
     @Param('ideaId') ideaId: string,
-    @Body(new ZodValidationPipe(PostRefinementMessageRequestSchema)) dto: PostRefinementMessageRequest,
+    @Body(new ZodValidationPipe(PostRefinementMessageRequestSchema))
+    dto: PostRefinementMessageRequest,
     @Res() res: Response,
   ): Promise<void> {
     res.setHeader('Content-Type', 'text/event-stream');
