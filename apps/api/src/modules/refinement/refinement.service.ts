@@ -5,9 +5,6 @@ import {
   type RefinementMessageResponse,
 } from '@ideascout/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AppConfigService } from '../../config/config.service';
-import { LlmRegistry } from '../providers/llm/llm.registry';
-import { IdeasService } from '../ideas/ideas.service';
 
 type IdeaWithVersion = {
   id: string;
@@ -17,17 +14,7 @@ type IdeaWithVersion = {
 
 @Injectable()
 export class RefinementService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly config: AppConfigService, // Used in future tasks
-    private readonly llm: LlmRegistry, // Used in future tasks
-    private readonly ideas: IdeasService, // Used in future tasks
-  ) {
-    // Preserve dependency declarations for future use
-    void this.config;
-    void this.llm;
-    void this.ideas;
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   /** Prisma row → API DTO (ISO timestamp, patch coerced to the shared shape or null). */
   toMessageResponse(msg: RefinementMessage): RefinementMessageResponse {

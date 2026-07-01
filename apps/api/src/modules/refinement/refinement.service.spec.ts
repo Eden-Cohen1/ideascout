@@ -1,14 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
-import type { AppConfigService } from '../../config/config.service';
-import type { LlmRegistry } from '../providers/llm/llm.registry';
-import type { IdeasService } from '../ideas/ideas.service';
 import { RefinementService } from './refinement.service';
 
 function makeService(over: {
   message?: unknown[];
   idea?: unknown;
-  run?: unknown;
 } = {}) {
   const prisma = {
     refinementMessage: {
@@ -23,12 +19,8 @@ function makeService(over: {
         },
       ),
     },
-    researchRun: { findFirst: jest.fn().mockResolvedValue(over.run ?? null) },
   } as unknown as PrismaService;
-  const config = { llm: { defaultProvider: 'mock', defaultModel: undefined } } as unknown as AppConfigService;
-  const llm = { resolve: jest.fn() } as unknown as LlmRegistry;
-  const ideas = { update: jest.fn() } as unknown as IdeasService;
-  return { service: new RefinementService(prisma, config, llm, ideas), prisma };
+  return { service: new RefinementService(prisma), prisma };
 }
 
 describe('RefinementService.listThread', () => {
