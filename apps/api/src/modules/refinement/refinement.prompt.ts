@@ -21,8 +21,6 @@ export const PatchExtractionSchema = z.object({
   reasoning: z.string().optional(),
 });
 
-export type PatchExtraction = z.infer<typeof PatchExtractionSchema>;
-
 /** Messages for the patch-extraction call: given the idea + the advisor reply, emit edits. */
 export function patchExtractionMessages(ideaBrief: string, reply: string): LlmMessage[] {
   return [

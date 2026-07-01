@@ -11,7 +11,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AppConfigService } from '../../config/config.service';
 import { LlmRegistry } from '../providers/llm/llm.registry';
-import { IdeasService } from '../ideas/ideas.service';
+import { IdeasService, type IdeaWithVersion } from '../ideas/ideas.service';
 import {
   buildRefinementContext,
   type HistoryTurn,
@@ -19,12 +19,6 @@ import {
   ideaBrief,
 } from './refinement.context';
 import { PatchExtractionSchema, patchExtractionMessages } from './refinement.prompt';
-
-type IdeaWithVersion = {
-  id: string;
-  projectId: string;
-  currentVersion: { problem: string; solution: string; targetCustomer: string | null } | null;
-};
 
 @Injectable()
 export class RefinementService {
@@ -144,10 +138,10 @@ export class RefinementService {
 
   /** Load the idea + current version, asserting it belongs to the (authorized) project. */
   private async loadIdeaOrThrow(projectId: string, ideaId: string): Promise<IdeaWithVersion> {
-    const idea = (await this.prisma.idea.findUnique({
+    const idea = await this.prisma.idea.findUnique({
       where: { id: ideaId },
       include: { currentVersion: true },
-    })) as IdeaWithVersion | null;
+    });
     if (!idea || idea.projectId !== projectId) {
       throw new NotFoundException('Idea not found');
     }
@@ -186,12 +180,14 @@ export class RefinementService {
   /** Prior turns (excluding SYSTEM and the current user message) as history for context builder. */
   private async loadHistory(ideaId: string, excludeId?: string): Promise<HistoryTurn[]> {
     const rows = await this.prisma.refinementMessage.findMany({
-      where: { ideaId },
+      where: {
+        ideaId,
+        role: { in: ['USER', 'ASSISTANT'] },
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
       orderBy: { createdAt: 'asc' },
     });
-    return rows
-      .filter((r) => r.id !== excludeId && (r.role === 'USER' || r.role === 'ASSISTANT'))
-      .map((r) => ({ role: r.role as HistoryTurn['role'], content: r.content }));
+    return rows.map((r) => ({ role: r.role as HistoryTurn['role'], content: r.content }));
   }
 
   /** Resolve the LLM provider + model for an idea's project (project default → global). */

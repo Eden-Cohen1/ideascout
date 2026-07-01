@@ -63,10 +63,7 @@ export class OpenAiLlmProvider extends FetchLlmProvider {
     };
   }
 
-  async *stream(
-    messages: LlmMessage[],
-    opts?: LlmCallOptions,
-  ): AsyncIterable<LlmStreamChunk> {
+  async *stream(messages: LlmMessage[], opts?: LlmCallOptions): AsyncIterable<LlmStreamChunk> {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -88,38 +85,37 @@ export class OpenAiLlmProvider extends FetchLlmProvider {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
+    const state = { buffer: '' };
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      // SSE frames are separated by a blank line.
-      let sep: number;
-      while ((sep = buffer.indexOf('\n\n')) !== -1) {
-        const frame = buffer.slice(0, sep);
-        buffer = buffer.slice(sep + 2);
-        const delta = this.parseStreamFrame(frame);
-        if (delta === '[DONE]') {
-          yield { delta: '', done: true };
-          return;
-        }
-        if (delta) yield { delta, done: false };
-      }
-    }
-    // Flush any bytes the streaming decoder buffered, then drain trailing frames.
-    buffer += decoder.decode();
-    let tailSep: number;
-    while ((tailSep = buffer.indexOf('\n\n')) !== -1) {
-      const frame = buffer.slice(0, tailSep);
-      buffer = buffer.slice(tailSep + 2);
-      const delta = this.parseStreamFrame(frame);
-      if (delta === '[DONE]') {
+      state.buffer += decoder.decode(value, { stream: true });
+      if (yield* this.drainFrames(state)) {
         yield { delta: '', done: true };
         return;
       }
+    }
+    // Flush any bytes the streaming decoder buffered, then drain trailing frames.
+    state.buffer += decoder.decode();
+    yield* this.drainFrames(state);
+    yield { delta: '', done: true };
+  }
+
+  /**
+   * Drain every complete SSE frame (separated by a blank line) from `state.buffer`,
+   * mutating it as frames are consumed. Yields a chunk per token; returns true if the
+   * terminal `[DONE]` frame was seen (so the caller can stop).
+   */
+  private *drainFrames(state: { buffer: string }): Generator<LlmStreamChunk, boolean> {
+    let sep: number;
+    while ((sep = state.buffer.indexOf('\n\n')) !== -1) {
+      const frame = state.buffer.slice(0, sep);
+      state.buffer = state.buffer.slice(sep + 2);
+      const delta = this.parseStreamFrame(frame);
+      if (delta === '[DONE]') return true;
       if (delta) yield { delta, done: false };
     }
-    yield { delta: '', done: true };
+    return false;
   }
 
   /** Extract the token from one SSE frame, or '[DONE]' at end-of-stream, or '' to skip. */
