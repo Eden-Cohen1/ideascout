@@ -1,16 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { RefinementMessage } from '@prisma/client';
 import {
-  CompetitorMapSchema,
   type ProposedPatch,
   type RefinementMessageResponse,
-  VerdictSchema,
 } from '@ideascout/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AppConfigService } from '../../config/config.service';
 import { LlmRegistry } from '../providers/llm/llm.registry';
 import { IdeasService } from '../ideas/ideas.service';
-import type { ResearchSummary } from './refinement.context';
 
 type IdeaWithVersion = {
   id: string;
@@ -63,35 +60,5 @@ export class RefinementService {
       throw new NotFoundException('Idea not found');
     }
     return idea;
-  }
-
-  /** Summarize the most recent SUCCEEDED research run for the idea (null if none). */
-  // @ts-expect-error TS6133 - private method used in future tasks
-  private async loadResearchSummary(ideaId: string): Promise<ResearchSummary | null> {
-    const run = await this.prisma.researchRun.findFirst({
-      where: { ideaId, status: 'SUCCEEDED' },
-      orderBy: { finishedAt: 'desc' },
-      include: {
-        moat: true,
-        artifacts: {
-          where: { kind: { in: ['VERDICT', 'COMPETITOR_MAP'] } },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
-    if (!run) return null;
-
-    const verdictPayload = run.artifacts.find((a) => a.kind === 'VERDICT')?.payload;
-    const verdict = VerdictSchema.safeParse(verdictPayload);
-    const competitorPayload = run.artifacts.find((a) => a.kind === 'COMPETITOR_MAP')?.payload;
-    const competitor = CompetitorMapSchema.safeParse(competitorPayload);
-
-    return {
-      verdict: run.verdict ?? (verdict.success ? verdict.data.verdict : 'UNKNOWN'),
-      score: run.verdictScore ?? null,
-      keyRisks: verdict.success ? verdict.data.keyRisks : [],
-      marketSummary: competitor.success ? competitor.data.marketSummary : undefined,
-      moatSummary: run.moat?.summary ?? undefined,
-    };
   }
 }
