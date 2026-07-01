@@ -9,8 +9,7 @@ import {
   VerdictSchema,
 } from '@ideascout/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AppConfigService } from '../../config/config.service';
-import { LlmRegistry } from '../providers/llm/llm.registry';
+import { LlmRegistry, type ResolvedLlm } from '../providers/llm/llm.registry';
 import { IdeasService, type IdeaWithVersion } from '../ideas/ideas.service';
 import {
   buildRefinementContext,
@@ -26,7 +25,6 @@ export class RefinementService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: AppConfigService,
     private readonly llm: LlmRegistry,
     private readonly ideas: IdeasService,
   ) {}
@@ -207,13 +205,9 @@ export class RefinementService {
   }
 
   /** Resolve the LLM provider + model for an idea's project (project default → global). */
-  private async resolveLlm(
-    projectId: string,
-  ): Promise<{ provider: ReturnType<LlmRegistry['resolve']>; model: string | undefined }> {
+  private async resolveLlm(projectId: string): Promise<ResolvedLlm> {
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
-    const provider = this.llm.resolve(project?.llmProvider ?? this.config.llm.defaultProvider);
-    const model = project?.llmModel ?? this.config.llm.defaultModel ?? provider.defaultModel;
-    return { provider, model };
+    return this.llm.resolveForProject({ provider: project?.llmProvider, model: project?.llmModel });
   }
 
   /** Second (structured) call: extract an idea patch from the reply; null if empty. */

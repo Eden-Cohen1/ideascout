@@ -9,6 +9,16 @@ export interface LlmProviderStatus {
   defaultModel: string;
 }
 
+/** A project's provider/model selection, resolved against config + provider defaults. */
+export interface ResolvedLlm {
+  /** The requested provider id (selection → global default), before mock fallback. */
+  providerId: string;
+  /** The concrete provider to use (mock fallback applied). */
+  provider: LlmProvider;
+  /** The model id to use (selection → global default → the provider's default). */
+  model: string;
+}
+
 @Injectable()
 export class LlmRegistry {
   private readonly log = new Logger(LlmRegistry.name);
@@ -38,6 +48,19 @@ export class LlmRegistry {
       throw new Error('mock LLM provider is not registered');
     }
     return mock;
+  }
+
+  /**
+   * Resolve a project's LLM selection into the provider + model to use. The single
+   * source of the provider/model fallback cascade shared by the research pipeline and
+   * the refinement loop. Callers pass the already-merged selection (e.g. per-run
+   * override ?? project default); this appends the global-config and provider defaults.
+   */
+  resolveForProject(selection: { provider?: string | null; model?: string | null }): ResolvedLlm {
+    const providerId = selection.provider ?? this.config.llm.defaultProvider;
+    const provider = this.resolve(providerId);
+    const model = selection.model ?? this.config.llm.defaultModel ?? provider.defaultModel;
+    return { providerId, provider, model };
   }
 
   available(): LlmProviderStatus[] {

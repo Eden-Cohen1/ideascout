@@ -42,6 +42,34 @@ describe('LlmRegistry', () => {
     expect(reg.resolve('nope').id).toBe('mock');
   });
 
+  describe('resolveForProject', () => {
+    it('uses the selection provider + model when given', () => {
+      const reg = registry(
+        [fakeLlm('openai', true), fakeLlm('anthropic', true), fakeLlm('mock', true)],
+        'openai',
+      );
+      const r = reg.resolveForProject({ provider: 'anthropic', model: 'claude-x' });
+      expect(r.providerId).toBe('anthropic');
+      expect(r.provider.id).toBe('anthropic');
+      expect(r.model).toBe('claude-x');
+    });
+
+    it('falls back to the config default provider and the provider default model', () => {
+      const reg = registry([fakeLlm('openai', true), fakeLlm('mock', true)], 'openai');
+      const r = reg.resolveForProject({});
+      expect(r.providerId).toBe('openai');
+      expect(r.model).toBe('openai-model');
+    });
+
+    it('keeps the requested providerId even when the provider falls back to mock', () => {
+      const reg = registry([fakeLlm('openai', false), fakeLlm('mock', true)], 'openai');
+      const r = reg.resolveForProject({ provider: 'openai' });
+      expect(r.providerId).toBe('openai'); // recorded as requested
+      expect(r.provider.id).toBe('mock'); // but actually served by mock
+      expect(r.model).toBe('mock-model');
+    });
+  });
+
   it('reports availability for every provider', () => {
     const reg = registry([fakeLlm('openai', false), fakeLlm('mock', true)], 'openai');
     expect(reg.available()).toEqual(

@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { concat, from, map, type Observable, of, switchMap } from 'rxjs';
 import {
   type ResearchProgressEvent,
@@ -39,6 +40,10 @@ function currentStateEvent(run: ResearchRun): ResearchProgressEvent {
   };
 }
 
+// A research run enqueues the full pipeline (many LLM + web calls) — the most
+// expensive operation in the app. Rate-limit far tighter than the global 100/min.
+const RESEARCH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
+
 @ApiTags('research')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, ProjectAccessGuard)
@@ -50,6 +55,7 @@ export class ResearchController {
   ) {}
 
   @Post('ideas/:ideaId/research')
+  @Throttle(RESEARCH_THROTTLE)
   @ApiOperation({ summary: 'Start a research run for an idea (enqueues the pipeline)' })
   @ApiZodBody(StartResearchRequestSchema)
   async start(

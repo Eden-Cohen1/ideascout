@@ -12,6 +12,7 @@ import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { ApiZodBody } from '../../common/swagger';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { ProjectAccessGuard } from '../projects/project-access.guard';
+import { streamSse } from '../../common/sse';
 import { toIdeaResponse } from '../ideas/ideas.mapper';
 import { RefinementService } from './refinement.service';
 
@@ -45,20 +46,10 @@ export class RefinementController {
     dto: PostRefinementMessageRequest,
     @Res() res: Response,
   ): Promise<void> {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders?.();
-
-    try {
-      for await (const event of this.refinement.generate(projectId, ideaId, dto.content)) {
-        res.write(`data: ${JSON.stringify(event)}\n\n`);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      res.write(`data: ${JSON.stringify({ type: 'error', message })}\n\n`);
-    }
-    res.end();
+    await streamSse(res, this.refinement.generate(projectId, ideaId, dto.content), (error) => ({
+      type: 'error' as const,
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }));
   }
 
   @Post(':messageId/apply')

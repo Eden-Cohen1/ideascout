@@ -18,7 +18,12 @@ function deps(overrides: { idea?: unknown; run?: unknown }) {
     research: { defaultProvider: 'tavily' },
   } as unknown as AppConfigService;
   const llm = {
-    resolve: jest.fn().mockReturnValue({ defaultModel: 'gpt-4.1-mini' }),
+    // Stand-in for LlmRegistry.resolveForProject: mirrors its config/provider fallback.
+    resolveForProject: jest.fn(({ provider, model }) => ({
+      providerId: provider ?? 'openai',
+      provider: { defaultModel: 'gpt-4.1-mini' },
+      model: model ?? 'gpt-4.1-mini',
+    })),
   } as unknown as LlmRegistry;
   const queue = { add: jest.fn().mockResolvedValue({ id: 'r1' }) } as unknown as Queue;
   return { prisma, config, llm, queue, service: new ResearchService(prisma, config, llm, queue) };

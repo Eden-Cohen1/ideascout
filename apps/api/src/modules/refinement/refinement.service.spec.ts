@@ -1,6 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { PrismaService } from '../../prisma/prisma.service';
-import type { AppConfigService } from '../../config/config.service';
 import type { LlmRegistry } from '../providers/llm/llm.registry';
 import type { IdeasService } from '../ideas/ideas.service';
 import { RefinementService } from './refinement.service';
@@ -27,12 +26,9 @@ function makeService(
     },
     researchRun: { findFirst: jest.fn().mockResolvedValue(over.run ?? null) },
   } as unknown as PrismaService;
-  const config = {
-    llm: { defaultProvider: 'mock', defaultModel: undefined },
-  } as unknown as AppConfigService;
-  const llm = { resolve: jest.fn() } as unknown as LlmRegistry;
+  const llm = { resolveForProject: jest.fn() } as unknown as LlmRegistry;
   const ideas = { update: jest.fn() } as unknown as IdeasService;
-  return { service: new RefinementService(prisma, config, llm, ideas), prisma };
+  return { service: new RefinementService(prisma, llm, ideas), prisma };
 }
 
 describe('RefinementService.listThread', () => {
@@ -127,17 +123,16 @@ describe('RefinementService.generate', () => {
       stream: jest.fn().mockReturnValue(fakeStream()),
       structured: jest.fn().mockResolvedValue({ value: {}, usage: {}, model: 'mock-1' }),
     };
-    const config = {
-      llm: { defaultProvider: 'mock', defaultModel: undefined },
-    } as unknown as import('../../config/config.service').AppConfigService;
     const llm = {
-      resolve: jest.fn().mockReturnValue(provider),
+      resolveForProject: jest
+        .fn()
+        .mockReturnValue({ providerId: 'mock', provider, model: 'mock-1' }),
     } as unknown as import('../providers/llm/llm.registry').LlmRegistry;
     const ideas = {
       update: jest.fn(),
     } as unknown as import('../ideas/ideas.service').IdeasService;
 
-    const service = new RefinementService(prisma, config, llm, ideas);
+    const service = new RefinementService(prisma, llm, ideas);
     const events = await collect(service.generate('proj1', 'idea1', 'hi'));
 
     const tokens = events.filter((e) => e.type === 'token').map((e) => e.delta);
@@ -193,15 +188,14 @@ describe('RefinementService.generate', () => {
       // Extraction fails — must NOT discard the already-streamed reply.
       structured: jest.fn().mockRejectedValue(new Error('extraction boom')),
     };
-    const config = {
-      llm: { defaultProvider: 'mock', defaultModel: undefined },
-    } as unknown as import('../../config/config.service').AppConfigService;
     const llm = {
-      resolve: jest.fn().mockReturnValue(provider),
+      resolveForProject: jest
+        .fn()
+        .mockReturnValue({ providerId: 'mock', provider, model: 'mock-1' }),
     } as unknown as import('../providers/llm/llm.registry').LlmRegistry;
     const ideas = {} as unknown as import('../ideas/ideas.service').IdeasService;
 
-    const service = new RefinementService(prisma, config, llm, ideas);
+    const service = new RefinementService(prisma, llm, ideas);
     const events = await collect(service.generate('proj1', 'idea1', 'hi'));
 
     const terminal = events.at(-1) as {
@@ -248,15 +242,14 @@ describe('RefinementService.generate', () => {
       throw new Error('stream died');
     }
     const provider = { defaultModel: 'mock-1', stream: jest.fn().mockReturnValue(boom()) };
-    const config = {
-      llm: { defaultProvider: 'mock', defaultModel: undefined },
-    } as unknown as import('../../config/config.service').AppConfigService;
     const llm = {
-      resolve: jest.fn().mockReturnValue(provider),
+      resolveForProject: jest
+        .fn()
+        .mockReturnValue({ providerId: 'mock', provider, model: 'mock-1' }),
     } as unknown as import('../providers/llm/llm.registry').LlmRegistry;
     const ideas = {} as unknown as import('../ideas/ideas.service').IdeasService;
 
-    const service = new RefinementService(prisma, config, llm, ideas);
+    const service = new RefinementService(prisma, llm, ideas);
     const events = [];
     for await (const e of service.generate('proj1', 'idea1', 'hi')) events.push(e);
     expect(events.at(-1)).toMatchObject({ type: 'error' });
@@ -276,14 +269,13 @@ describe('RefinementService.applyPatch', () => {
         update: jest.fn().mockResolvedValue({}),
       },
     } as unknown as import('../../prisma/prisma.service').PrismaService;
-    const config = {} as unknown as import('../../config/config.service').AppConfigService;
     const llm = {} as unknown as import('../providers/llm/llm.registry').LlmRegistry;
     const ideas = {
       update: jest
         .fn()
         .mockResolvedValue({ id: 'idea1', currentVersionId: 'v2', currentVersion: { id: 'v2' } }),
     } as unknown as import('../ideas/ideas.service').IdeasService;
-    return { service: new RefinementService(prisma, config, llm, ideas), prisma, ideas };
+    return { service: new RefinementService(prisma, llm, ideas), prisma, ideas };
   }
 
   it('creates a new version from the patch and links appliedVersionId', async () => {
