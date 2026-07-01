@@ -88,4 +88,42 @@ describe('OpenAiLlmProvider.stream', () => {
     expect(doneSeen).toBe(true);
     fetchMock.mockRestore();
   });
+
+  it('flushes buffered multi-byte UTF-8 characters and drains trailing frames', async () => {
+    const config = {
+      providerKey: () => 'sk-test',
+      llm: { defaultProvider: 'openai', defaultModel: undefined },
+    } as unknown as AppConfigService;
+    const provider = new OpenAiLlmProvider(config);
+
+    // Create an SSE body with multi-byte UTF-8 characters but NO [DONE] frame,
+    // forcing the decoder flush path to run when the loop exits.
+    const enc = new TextEncoder();
+    const lines = [
+      `data: ${JSON.stringify({ choices: [{ delta: { content: 'Hello ' } }] })}\n\n`,
+      `data: ${JSON.stringify({ choices: [{ delta: { content: 'é' } }] })}\n\n`,
+      // No [DONE] frame—stream ends abruptly
+    ];
+    const sseBodyWithoutDone = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const l of lines) controller.enqueue(enc.encode(l));
+        controller.close();
+      },
+    });
+
+    const fetchMock = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(sseBodyWithoutDone, { status: 200 }));
+
+    const deltas: string[] = [];
+    let doneSeen = false;
+    for await (const chunk of provider.stream([{ role: 'user', content: 'hi' }])) {
+      if (chunk.delta) deltas.push(chunk.delta);
+      if (chunk.done) doneSeen = true;
+    }
+
+    expect(deltas).toEqual(['Hello ', 'é']);
+    expect(doneSeen).toBe(true);
+    fetchMock.mockRestore();
+  });
 });

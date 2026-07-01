@@ -106,6 +106,19 @@ export class OpenAiLlmProvider extends FetchLlmProvider {
         if (delta) yield { delta, done: false };
       }
     }
+    // Flush any bytes the streaming decoder buffered, then drain trailing frames.
+    buffer += decoder.decode();
+    let tailSep: number;
+    while ((tailSep = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, tailSep);
+      buffer = buffer.slice(tailSep + 2);
+      const delta = this.parseStreamFrame(frame);
+      if (delta === '[DONE]') {
+        yield { delta: '', done: true };
+        return;
+      }
+      if (delta) yield { delta, done: false };
+    }
     yield { delta: '', done: true };
   }
 
