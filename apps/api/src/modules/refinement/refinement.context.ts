@@ -43,6 +43,24 @@ const ROLE_MAP: Record<HistoryTurn['role'], LlmRole> = {
   SYSTEM: 'system',
 };
 
+/**
+ * Keep only completed USER→ASSISTANT exchanges, dropping orphaned user turns (a turn
+ * whose generation failed persists the user message but no reply). This keeps the
+ * history strictly alternating — a dangling user turn would both mislead the model and
+ * break providers (e.g. Anthropic) that require alternating roles once the new user
+ * turn is appended.
+ */
+export function toAlternatingHistory(turns: HistoryTurn[]): HistoryTurn[] {
+  const pairs: HistoryTurn[] = [];
+  for (let i = 0; i < turns.length; i += 1) {
+    if (turns[i].role === 'USER' && turns[i + 1]?.role === 'ASSISTANT') {
+      pairs.push(turns[i], turns[i + 1]);
+      i += 1; // consume the assistant reply
+    }
+  }
+  return pairs;
+}
+
 /** Assemble the chat context: system (persona + idea + research) → history → new user turn. */
 export function buildRefinementContext(
   idea: IdeaSnapshot,
@@ -55,7 +73,7 @@ export function buildRefinementContext(
 
   return [
     { role: 'system', content: systemParts.join('\n\n') },
-    ...history.map((t) => ({ role: ROLE_MAP[t.role], content: t.content })),
+    ...toAlternatingHistory(history).map((t) => ({ role: ROLE_MAP[t.role], content: t.content })),
     { role: 'user', content: userMessage },
   ];
 }

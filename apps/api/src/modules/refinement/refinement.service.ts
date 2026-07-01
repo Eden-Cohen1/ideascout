@@ -166,7 +166,9 @@ export class RefinementService {
   private async loadResearchSummary(ideaId: string): Promise<ResearchSummary | null> {
     const run = await this.prisma.researchRun.findFirst({
       where: { ideaId, status: 'SUCCEEDED' },
-      orderBy: { finishedAt: 'desc' },
+      // nulls last: a SUCCEEDED run should always have finishedAt, but never let a
+      // stray null sort ahead of real completions (Postgres desc puts nulls first).
+      orderBy: { finishedAt: { sort: 'desc', nulls: 'last' } },
       include: {
         moat: true,
         artifacts: {
