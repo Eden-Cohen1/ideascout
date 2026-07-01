@@ -4,6 +4,7 @@ import { AppConfigService } from './config/config.service';
 import { CryptoService } from './crypto/crypto.service';
 import { PrismaService } from './prisma/prisma.service';
 import { LlmRegistry } from './modules/providers/llm/llm.registry';
+import { RESEARCH_QUEUE, RESEARCH_QUEUE_EVENTS } from './modules/jobs/jobs.tokens';
 
 describe('AppModule (integration)', () => {
   beforeAll(() => {
@@ -16,7 +17,14 @@ describe('AppModule (integration)', () => {
   });
 
   it('boots, validates config, and wires ConfigModule + CryptoModule', async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    // Fake the BullMQ providers so this boot test doesn't open real Redis clients
+    // (the queue is exercised for real in the live verification).
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(RESEARCH_QUEUE)
+      .useValue({ add: jest.fn(), close: jest.fn().mockResolvedValue(undefined) })
+      .overrideProvider(RESEARCH_QUEUE_EVENTS)
+      .useValue({ on: jest.fn(), run: jest.fn(), close: jest.fn().mockResolvedValue(undefined) })
+      .compile();
 
     const config = moduleRef.get(AppConfigService);
     const crypto = moduleRef.get(CryptoService);

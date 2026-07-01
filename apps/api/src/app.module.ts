@@ -9,9 +9,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { IdeasModule } from './modules/ideas/ideas.module';
 import { ProvidersModule } from './modules/providers/providers.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+import { ResearchModule } from './modules/research/research.module';
 
-// Remaining feature modules (Research, Refinement, Jobs) are added here as later
-// Phase 1 milestones land.
+// Refinement is the remaining feature module (next milestone).
 @Module({
   imports: [
     ConfigModule,
@@ -19,9 +20,11 @@ import { ProvidersModule } from './modules/providers/providers.module';
     CryptoModule,
     HealthModule,
     ProvidersModule,
+    JobsModule,
     AuthModule,
     ProjectsModule,
     IdeasModule,
+    ResearchModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
