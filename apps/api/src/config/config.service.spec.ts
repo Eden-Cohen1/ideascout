@@ -12,6 +12,7 @@ const sample: AppConfig = {
   LLM_DEFAULT_PROVIDER: 'openai',
   LLM_DEFAULT_MODEL: undefined,
   RESEARCH_DEFAULT_PROVIDER: 'tavily',
+  RESEARCH_STEP_DELAY_MS: 0,
   OPENAI_API_KEY: 'sk-openai',
   ANTHROPIC_API_KEY: undefined,
   GEMINI_API_KEY: undefined,

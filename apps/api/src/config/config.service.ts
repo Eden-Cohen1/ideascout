@@ -58,6 +58,11 @@ export class AppConfigService {
     return { defaultProvider: this.config.RESEARCH_DEFAULT_PROVIDER };
   }
 
+  /** Artificial per-step delay (ms) for the research pipeline; 0 = none. */
+  get researchStepDelayMs(): number {
+    return this.config.RESEARCH_STEP_DELAY_MS;
+  }
+
   /** Allowed CORS origins (parsed from the comma-separated CORS_ORIGINS). */
   get corsOrigins(): string[] {
     return (this.config.CORS_ORIGINS ?? '')

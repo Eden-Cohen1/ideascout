@@ -22,6 +22,10 @@ export const configSchema = z.object({
   LLM_DEFAULT_MODEL: z.string().optional(),
   RESEARCH_DEFAULT_PROVIDER: z.enum(RESEARCH_PROVIDER_IDS).default('tavily'),
 
+  // Artificial per-step delay (ms) for the research pipeline — lets you watch
+  // progress stream in mock mode / frontend dev. 0 = no delay (default).
+  RESEARCH_STEP_DELAY_MS: z.coerce.number().int().min(0).default(0),
+
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
