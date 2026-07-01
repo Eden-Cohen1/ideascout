@@ -7,7 +7,16 @@ import { AppConfigService } from '../../config/config.service';
 import { LlmRegistry } from '../providers/llm/llm.registry';
 import { RESEARCH_QUEUE, RESEARCH_QUEUE_NAME, type ResearchJobData } from '../jobs/jobs.tokens';
 
-const RUN_INCLUDE = { competitors: true, moat: true, idea: true } as const;
+const RUN_INCLUDE = {
+  competitors: true,
+  moat: true,
+  idea: true,
+  // Latest structured artifacts feed the detail DTO (verdict / competitor map / moat).
+  artifacts: {
+    where: { kind: { in: ['VERDICT', 'COMPETITOR_MAP', 'MOAT'] } },
+    orderBy: { createdAt: 'desc' },
+  },
+} satisfies Prisma.ResearchRunInclude;
 export type ResearchRunDetail = Prisma.ResearchRunGetPayload<{ include: typeof RUN_INCLUDE }>;
 
 @Injectable()

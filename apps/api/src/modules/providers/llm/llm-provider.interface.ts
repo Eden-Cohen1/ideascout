@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 
 export type LlmRole = 'system' | 'user' | 'assistant';
 
@@ -53,10 +53,15 @@ export interface LlmProvider {
 
   chat(messages: LlmMessage[], opts?: LlmCallOptions): Promise<LlmChatResult>;
 
-  /** JSON/structured output validated against a Zod schema (retries+repairs once on parse failure). */
+  /**
+   * JSON/structured output validated against a Zod schema (retries+repairs once on
+   * parse failure). `T` is inferred from the schema's OUTPUT type — the third type
+   * param is widened to `unknown` so schemas using `.default()`/`.optional()` (whose
+   * input type differs from their output) still infer the parsed output, not the input.
+   */
   structured<T>(
     messages: LlmMessage[],
-    schema: ZodType<T>,
+    schema: ZodType<T, ZodTypeDef, unknown>,
     opts?: LlmCallOptions & { schemaName?: string },
   ): Promise<LlmStructuredResult<T>>;
 

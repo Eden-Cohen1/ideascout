@@ -1,4 +1,4 @@
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import type { AppConfigService } from '../../../../config/config.service';
 import type {
   LlmCallOptions,
@@ -56,7 +56,7 @@ export abstract class FetchLlmProvider implements LlmProvider {
 
   async structured<T>(
     messages: LlmMessage[],
-    schema: ZodType<T>,
+    schema: ZodType<T, ZodTypeDef, unknown>,
     opts?: LlmCallOptions,
   ): Promise<LlmStructuredResult<T>> {
     let errText = '';
