@@ -1,20 +1,21 @@
-# Base stack. Dev overrides are auto-merged from docker-compose.override.yml.
-# For prod: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-# NOTE: api/web images build successfully once their apps are implemented
-# (finalized in the Docker milestone). Postgres + Redis are usable now.
+# Full stack: postgres, redis, a one-shot migrate job, api, worker, web.
+# Dev overrides (host port mappings) are auto-merged from docker-compose.override.yml.
+# For prod: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Requires a .env (copy .env.example): POSTGRES_USER/PASSWORD/DB + the API secrets. The
+# DB/Redis URLs below point at the compose service hosts (overriding .env's localhost).
 
 services:
   postgres:
     image: postgres:17
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ideascout}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ideascout}
-      POSTGRES_DB: ${POSTGRES_DB:-ideascout}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./infra/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ideascout}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -31,16 +32,37 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: apply Prisma migrations, then exit. Uses the build stage (Prisma CLI +
+  # schema + migrations). api/worker wait for it to complete before starting.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    command: ['npx', 'prisma', 'migrate', 'deploy', '--schema=apps/api/prisma/schema.prisma']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     env_file: .env
+    # Override the connection URLs from .env (localhost) with the compose service hosts.
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -57,11 +79,16 @@ services:
       dockerfile: apps/api/Dockerfile
     command: ['node', 'dist/worker.js']
     env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       api:
         condition: service_started
 
