@@ -42,6 +42,16 @@ for, not yet built.
   request bodies use `@ApiZodBody(Schema)` from `common/swagger.ts` so docs derive from
   the SAME shared Zod schema we validate against (no drift). New endpoints are not "done"
   until they're documented this way.
+- **Auth & rate limiting.** The web frontend authenticates via an httpOnly,
+  `SameSite=Lax` cookie (`apps/api/src/modules/auth/auth-cookie.util.ts`) — safe without
+  CSRF tokens because web+API are always same-origin (Vite dev proxy / prod nginx).
+  `JwtAuthGuard` reads the cookie first, falling back to a Bearer header for
+  Swagger/API/non-browser clients. A global `ThrottlerModule` (100 req/min/IP default,
+  `apps/api/src/app.module.ts`) guards every route; `login`/`register` use a tighter
+  `@Throttle()` for brute-force protection. **Any future endpoint that triggers an AI
+  provider call (research start, refinement message) must add its own explicit
+  `@Throttle()` tighter than the global default** — this is the only real defense
+  against API-cost abuse, since client-side guardrails alone are trivially bypassed.
 
 ## Common commands
 
