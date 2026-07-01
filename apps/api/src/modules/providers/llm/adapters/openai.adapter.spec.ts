@@ -50,3 +50,42 @@ describe('OpenAiLlmProvider', () => {
     ).rejects.toThrow(/openai/i);
   });
 });
+
+describe('OpenAiLlmProvider.stream', () => {
+  function sseBody(chunks: string[]): ReadableStream<Uint8Array> {
+    const enc = new TextEncoder();
+    const lines = [
+      ...chunks.map((c) => `data: ${JSON.stringify({ choices: [{ delta: { content: c } }] })}\n\n`),
+      'data: [DONE]\n\n',
+    ];
+    return new ReadableStream({
+      start(controller) {
+        for (const l of lines) controller.enqueue(enc.encode(l));
+        controller.close();
+      },
+    });
+  }
+
+  it('yields a chunk per token then a terminal done', async () => {
+    const config = {
+      providerKey: () => 'sk-test',
+      llm: { defaultProvider: 'openai', defaultModel: undefined },
+    } as unknown as AppConfigService;
+    const provider = new OpenAiLlmProvider(config);
+
+    const fetchMock = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(sseBody(['Hel', 'lo']), { status: 200 }));
+
+    const deltas: string[] = [];
+    let doneSeen = false;
+    for await (const chunk of provider.stream([{ role: 'user', content: 'hi' }])) {
+      if (chunk.delta) deltas.push(chunk.delta);
+      if (chunk.done) doneSeen = true;
+    }
+
+    expect(deltas).toEqual(['Hel', 'lo']);
+    expect(doneSeen).toBe(true);
+    fetchMock.mockRestore();
+  });
+});

@@ -5,6 +5,7 @@ import type {
   LlmChatResult,
   LlmFinishReason,
   LlmMessage,
+  LlmStreamChunk,
 } from '../llm-provider.interface';
 import { FetchLlmProvider } from './base.adapter';
 
@@ -60,5 +61,65 @@ export class OpenAiLlmProvider extends FetchLlmProvider {
       model: data.model ?? this.model(opts),
       finishReason: FINISH[choice?.finish_reason ?? 'stop'] ?? 'stop',
     };
+  }
+
+  async *stream(
+    messages: LlmMessage[],
+    opts?: LlmCallOptions,
+  ): AsyncIterable<LlmStreamChunk> {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.providerKey('openai')}`,
+      },
+      body: JSON.stringify({
+        model: this.model(opts),
+        messages,
+        temperature: opts?.temperature ?? 0.7,
+        stream: true,
+      }),
+      signal: opts?.signal,
+    });
+    if (!res.ok || !res.body) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`openai stream failed (${res.status}): ${detail.slice(0, 300)}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // SSE frames are separated by a blank line.
+      let sep: number;
+      while ((sep = buffer.indexOf('\n\n')) !== -1) {
+        const frame = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        const delta = this.parseStreamFrame(frame);
+        if (delta === '[DONE]') {
+          yield { delta: '', done: true };
+          return;
+        }
+        if (delta) yield { delta, done: false };
+      }
+    }
+    yield { delta: '', done: true };
+  }
+
+  /** Extract the token from one SSE frame, or '[DONE]' at end-of-stream, or '' to skip. */
+  private parseStreamFrame(frame: string): string {
+    const line = frame.split('\n').find((l) => l.startsWith('data:'));
+    if (!line) return '';
+    const payload = line.slice('data:'.length).trim();
+    if (payload === '[DONE]') return '[DONE]';
+    try {
+      const json = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+      return json.choices?.[0]?.delta?.content ?? '';
+    } catch {
+      return '';
+    }
   }
 }

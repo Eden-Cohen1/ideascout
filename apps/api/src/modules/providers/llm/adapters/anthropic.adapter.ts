@@ -22,6 +22,7 @@ const FINISH: Record<string, LlmFinishReason> = {
   tool_use: 'tool',
 };
 
+// TODO(streaming): inherits emit-once stream() from FetchLlmProvider; add true streaming later.
 @Injectable()
 export class AnthropicLlmProvider extends FetchLlmProvider {
   readonly id = 'anthropic';
